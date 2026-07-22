@@ -47,19 +47,42 @@ class GitHubService:
         
         token = custom_token or settings.GITHUB_TOKEN
         
-        # Try downloading branches: default_branch, then main, master
-        branches_to_try = [default_branch]
-        if default_branch not in ['main', 'master']:
-            branches_to_try.extend(['main', 'master'])
-        else:
-            branches_to_try.append('master' if default_branch == 'main' else 'main')
-            
         headers = {
             "User-Agent": "RepoMind-AI-App",
             "Accept": "application/vnd.github.v3+json"
         }
         if token:
             headers["Authorization"] = f"token {token}"
+
+        # Fetch GitHub repository metadata (created_at, forks, stars, description)
+        created_at = "Unknown"
+        forks_count = 0
+        stargazers_count = 0
+        open_issues_count = 0
+        description = ""
+        
+        meta_url = f"https://api.github.com/repos/{owner}/{repo}"
+        meta_req = urllib.request.Request(meta_url, headers=headers)
+        try:
+            with urllib.request.urlopen(meta_req) as resp:
+                import json
+                meta_data = json.loads(resp.read().decode('utf-8'))
+                created_at = meta_data.get("created_at", "Unknown")
+                forks_count = meta_data.get("forks_count", 0)
+                stargazers_count = meta_data.get("stargazers_count", 0)
+                open_issues_count = meta_data.get("open_issues_count", 0)
+                description = meta_data.get("description", "") or ""
+                if meta_data.get("default_branch"):
+                    default_branch = meta_data.get("default_branch")
+        except Exception:
+            pass
+
+        # Try downloading branches: default_branch, then main, master
+        branches_to_try = [default_branch]
+        if default_branch not in ['main', 'master']:
+            branches_to_try.extend(['main', 'master'])
+        else:
+            branches_to_try.append('master' if default_branch == 'main' else 'main')
             
         downloaded = False
         used_branch = default_branch
@@ -109,5 +132,10 @@ class GitHubService:
             "repo": repo,
             "branch": used_branch,
             "local_path": str(target_dir),
-            "html_url": f"https://github.com/{owner}/{repo}"
+            "html_url": f"https://github.com/{owner}/{repo}",
+            "created_at": created_at,
+            "forks_count": forks_count,
+            "stargazers_count": stargazers_count,
+            "open_issues_count": open_issues_count,
+            "description": description
         }
