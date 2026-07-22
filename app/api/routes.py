@@ -119,6 +119,8 @@ def chat_with_repo(req: ChatRequest):
     if not session:
         raise HTTPException(status_code=404, detail="Repository session not active. Please re-import.")
 
+    print(f"[DEBUG] Chat request received. Provider: {req.api_provider}, Has API Key: {bool(req.api_key)}, Key Length: {len(req.api_key) if req.api_key else 0}")
+
     vector_store: VectorStore = session["vector_store"]
     top_chunks = vector_store.search(req.query, top_k=settings.TOP_K_RESULTS)
 
