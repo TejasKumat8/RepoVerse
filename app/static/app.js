@@ -1,5 +1,4 @@
-// ==========================================================================
-// RepoMind AI — Frontend Application Logic (with Stretch Features)
+// RepoVerse — Frontend Application Logic (with Stretch Features)
 // ==========================================================================
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -277,10 +276,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // Export Chat to Markdown File
   exportChatBtn.addEventListener("click", () => {
     const messages = chatMessages.querySelectorAll(".chat-message");
-    let exportText = `# RepoMind AI Chat Session Export\n**Repository**: ${currentRepoId || 'N/A'}\n**Date**: ${new Date().toLocaleString()}\n\n---\n\n`;
+    let exportText = `# RepoVerse Chat Session Export\n**Repository**: ${currentRepoId || 'N/A'}\n**Date**: ${new Date().toLocaleString()}\n\n---\n\n`;
     
     messages.forEach(msg => {
-      const sender = msg.classList.contains("user-message") ? "**User**" : "**RepoMind AI**";
+      const sender = msg.classList.contains("user-message") ? "**User**" : "**RepoVerse AI**";
       const text = msg.querySelector(".message-body").innerText;
       exportText += `${sender}:\n${text}\n\n---\n\n`;
     });

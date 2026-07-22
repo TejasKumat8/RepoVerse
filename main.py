@@ -10,7 +10,7 @@ from app.api.routes import router as api_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    description="RepoMind AI — Your AI Pair Programmer for Any GitHub Repository",
+    description="RepoVerse — Understand Any GitHub Repository with AI",
     version="1.0.0"
 )
 
@@ -36,6 +36,6 @@ if sys.platform == "win32":
     sys.stdout.reconfigure(encoding='utf-8')
 
 if __name__ == "__main__":
-    print(f"Starting RepoMind AI Server at http://{settings.HOST}:{settings.PORT}")
+    print(f"Starting RepoVerse Server at http://{settings.HOST}:{settings.PORT}")
     # Disable full-folder auto-reload so downloading repos to storage/ does not restart server
     uvicorn.run("main:app", host=settings.HOST, port=settings.PORT, reload=False)
