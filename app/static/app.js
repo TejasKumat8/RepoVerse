@@ -1,5 +1,5 @@
 // ==========================================================================
-// RepoMind AI — Frontend Application Logic
+// RepoMind AI — Frontend Application Logic (with Stretch Features)
 // ==========================================================================
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -23,6 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const chatMessages = document.getElementById("chatMessages");
   const chatInput = document.getElementById("chatInput");
   const sendChatBtn = document.getElementById("sendChatBtn");
+  const exportChatBtn = document.getElementById("exportChatBtn");
   const llmProviderSelect = document.getElementById("llmProviderSelect");
 
   const settingsBtn = document.getElementById("settingsBtn");
@@ -39,6 +40,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const closeModalBtn = document.getElementById("closeModalBtn");
   const modalFileName = document.getElementById("modalFileName");
   const modalCodeSnippet = document.getElementById("modalCodeSnippet");
+
+  const generateReadmeBtn = document.getElementById("generateReadmeBtn");
+  const auditRepoBtn = document.getElementById("auditRepoBtn");
+  const readmeModal = document.getElementById("readmeModal");
+  const closeReadmeBtn = document.getElementById("closeReadmeBtn");
+  const readmeContent = document.getElementById("readmeContent");
 
   // Load Saved Settings from LocalStorage
   const savedGhToken = localStorage.getItem("repomind_gh_token") || "";
@@ -108,13 +115,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // --------------------------------------------------------------------------
   // Import Repository Event Handlers
   // --------------------------------------------------------------------------
-  importBtn.addEventListener("click", () => {
-    triggerImport(repoUrlInput.value);
-  });
-
-  heroImportBtn.addEventListener("click", () => {
-    triggerImport(heroRepoUrlInput.value);
-  });
+  importBtn.addEventListener("click", () => triggerImport(repoUrlInput.value));
+  heroImportBtn.addEventListener("click", () => triggerImport(heroRepoUrlInput.value));
 
   repoUrlInput.addEventListener("keypress", (e) => {
     if (e.key === "Enter") triggerImport(repoUrlInput.value);
@@ -197,11 +199,9 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Append User Message
     appendChatMessage("user", question);
     chatInput.value = "";
 
-    // Append Assistant Loading Indicator
     const botMsgId = "msg-" + Date.now();
     appendChatMessage("assistant", "<i class='fa-solid fa-spinner fa-spin'></i> Analyzing codebase and vector chunks...", botMsgId);
 
@@ -226,10 +226,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Failed to generate answer.");
 
-      // Render formatted markdown response
       updateChatMessage(botMsgId, data.answer, data.citations);
 
-      // Log to history
       historyLogs.unshift({
         time: new Date().toLocaleTimeString(),
         repo: currentRepoId,
@@ -263,7 +261,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let parsedHtml = marked.parse(markdownText);
 
-    // Convert line citations like [path/file.py:L10-L40] to interactive badges
     if (citations && citations.length > 0) {
       citations.forEach(c => {
         const targetStr = `${c.file_path}:L${c.start_line}-L${c.end_line}`;
@@ -277,6 +274,26 @@ document.addEventListener("DOMContentLoaded", () => {
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
+  // Export Chat to Markdown File
+  exportChatBtn.addEventListener("click", () => {
+    const messages = chatMessages.querySelectorAll(".chat-message");
+    let exportText = `# RepoMind AI Chat Session Export\n**Repository**: ${currentRepoId || 'N/A'}\n**Date**: ${new Date().toLocaleString()}\n\n---\n\n`;
+    
+    messages.forEach(msg => {
+      const sender = msg.classList.contains("user-message") ? "**User**" : "**RepoMind AI**";
+      const text = msg.querySelector(".message-body").innerText;
+      exportText += `${sender}:\n${text}\n\n---\n\n`;
+    });
+
+    const blob = new Blob([exportText], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `repomind-chat-${currentRepoId || 'export'}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
   // --------------------------------------------------------------------------
   // Repository Intelligence & Folder Tree
   // --------------------------------------------------------------------------
@@ -285,7 +302,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("statLines").innerText = summary.total_lines.toLocaleString();
     document.getElementById("statBranch").innerText = summary.branch;
 
-    // Tech Stack Badges
     const badgesContainer = document.getElementById("techStackBadges");
     badgesContainer.innerHTML = "";
     if (summary.tech_stack && summary.tech_stack.length > 0) {
@@ -299,7 +315,6 @@ document.addEventListener("DOMContentLoaded", () => {
       badgesContainer.innerHTML = "<span class='hint-text'>Standard Code Base</span>";
     }
 
-    // Entry Points
     const entryList = document.getElementById("entryPointsList");
     entryList.innerHTML = "";
     if (summary.entry_points && summary.entry_points.length > 0) {
@@ -314,7 +329,6 @@ document.addEventListener("DOMContentLoaded", () => {
       entryList.innerHTML = "<span class='hint-text'>No standard entry files found.</span>";
     }
 
-    // Folder Tree
     const treeContainer = document.getElementById("folderTreeContainer");
     treeContainer.innerHTML = renderTreeNodes(summary.folder_tree);
   }
@@ -341,6 +355,61 @@ document.addEventListener("DOMContentLoaded", () => {
     html += "</div>";
     return html;
   }
+
+  // --------------------------------------------------------------------------
+  // STRETCH FEATURES: Auto-Generate README & Audit Codebase
+  // --------------------------------------------------------------------------
+  generateReadmeBtn.addEventListener("click", async () => {
+    if (!currentRepoId) return alert("Please import a repository first!");
+    readmeContent.innerText = "Generating README.md...";
+    readmeModal.classList.remove("hidden");
+
+    try {
+      const res = await fetch("/api/generate-readme", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repo_id: currentRepoId })
+      });
+      const data = await res.json();
+      readmeContent.innerText = data.readme;
+      hljs.highlightElement(readmeContent);
+    } catch (err) {
+      readmeContent.innerText = "Error generating README: " + err.message;
+    }
+  });
+
+  closeReadmeBtn.addEventListener("click", () => readmeModal.classList.add("hidden"));
+
+  auditRepoBtn.addEventListener("click", async () => {
+    if (!currentRepoId) return alert("Please import a repository first!");
+    const auditCard = document.getElementById("auditCard");
+    const auditResults = document.getElementById("auditResults");
+    auditCard.classList.remove("hidden");
+    auditResults.innerHTML = "<p class='hint-text'><i class='fa-solid fa-spinner fa-spin'></i> Auditing codebase for complex files & TODO markers...</p>";
+
+    try {
+      const res = await fetch("/api/audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repo_id: currentRepoId })
+      });
+      const data = await res.json();
+
+      let html = `<p><strong>Identified ${data.bug_prone_files.length} High-Complexity Files:</strong></p><ul style='margin-bottom:1rem; padding-left:1.2rem;'>`;
+      data.bug_prone_files.forEach(f => {
+        html += `<li><strong style='color:var(--primary-cyan);'>${f.file_path}</strong> - <span class='badge'>${f.risk_level} RISK</span>: ${f.reason}</li>`;
+      });
+      html += `</ul><p><strong>Found ${data.todo_count} TODO/FIXME Markers in Code:</strong></p><ul style='padding-left:1.2rem;'>`;
+      data.todos.forEach(t => {
+        html += `<li><code>${t.file_path}:L${t.line}</code>: ${escapeHtml(t.snippet)}</li>`;
+      });
+      html += "</ul>";
+
+      auditResults.innerHTML = html;
+    } catch (err) {
+      auditResults.innerHTML = `<p class='hint-text' style='color:red;'>Audit failed: ${err.message}</p>`;
+    }
+  });
 
   // --------------------------------------------------------------------------
   // File Code Preview Modal
