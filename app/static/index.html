@@ -130,14 +130,17 @@
               <div class="chat-title">
                 <i class="fa-solid fa-robot"></i> <span id="chatRepoTitle">RepoMind AI Pair Programmer</span>
               </div>
-              <div class="chat-provider-selector">
-                <label><i class="fa-solid fa-microchip"></i> Provider:</label>
-                <select id="llmProviderSelect">
-                  <option value="gemini">Google Gemini 1.5</option>
-                  <option value="openai">OpenAI (gpt-4o-mini)</option>
-                  <option value="groq">Groq (Llama 3.3)</option>
-                  <option value="local">Local RAG Engine</option>
-                </select>
+              <div class="chat-actions">
+                <button id="exportChatBtn" class="btn btn-icon" title="Export Chat Session to Markdown"><i class="fa-solid fa-download"></i> Export Chat</button>
+                <div class="chat-provider-selector">
+                  <label><i class="fa-solid fa-microchip"></i> Provider:</label>
+                  <select id="llmProviderSelect">
+                    <option value="gemini">Google Gemini 1.5</option>
+                    <option value="openai">OpenAI (gpt-4o-mini)</option>
+                    <option value="groq">Groq (Llama 3.3)</option>
+                    <option value="local">Local RAG Engine</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -184,6 +187,10 @@
               <div class="tech-stack-container" id="techStackBadges">
                 <!-- Stack Badges Inserted Here -->
               </div>
+              <div style="margin-top: 1rem;">
+                <button id="generateReadmeBtn" class="btn btn-primary btn-sm"><i class="fa-solid fa-file-lines"></i> Auto-Generate README.md</button>
+                <button id="auditRepoBtn" class="btn btn-secondary btn-sm"><i class="fa-solid fa-shield-halved"></i> Audit Code Health</button>
+              </div>
             </div>
 
             <!-- Entry Points Card -->
@@ -191,6 +198,14 @@
               <h3><i class="fa-solid fa-door-open"></i> Important Entry Points</h3>
               <div id="entryPointsList" class="entry-list">
                 <!-- Entry Points Inserted Here -->
+              </div>
+            </div>
+
+            <!-- Code Health & Risk Card (Stretch Feature) -->
+            <div id="auditCard" class="card overview-card full-width hidden">
+              <h3><i class="fa-solid fa-bug"></i> Code Base Health & Risk Analysis</h3>
+              <div id="auditResults" class="audit-results-box">
+                <!-- Audit Results -->
               </div>
             </div>
 
@@ -257,6 +272,19 @@
         </div>
         <div class="modal-body">
           <pre><code id="modalCodeSnippet" class="language-python"># Code content...</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Generated README Modal -->
+    <div id="readmeModal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-title"><i class="fa-solid fa-file-lines"></i> Auto-Generated README.md</div>
+          <button id="closeReadmeBtn" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body">
+          <pre><code id="readmeContent" class="language-markdown"># README Content</code></pre>
         </div>
       </div>
     </div>
