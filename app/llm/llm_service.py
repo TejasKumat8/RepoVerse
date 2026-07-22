@@ -59,25 +59,31 @@ class LLMService:
 
         effective_key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("GROQ_API_KEY")
 
-        if effective_key:
+        if effective_key and effective_key.strip():
+            key_clean = effective_key.strip()
             try:
-                if api_provider.lower() == "gemini" or "AIza" in effective_key:
-                    return cls._call_gemini(system_prompt, user_prompt, effective_key, citations)
-                elif api_provider.lower() == "openai" or effective_key.startswith("sk-"):
-                    return cls._call_openai(system_prompt, user_prompt, effective_key, citations)
-                elif api_provider.lower() == "groq" or effective_key.startswith("gsk_"):
-                    return cls._call_groq(system_prompt, user_prompt, effective_key, citations)
+                if api_provider.lower() == "openai" or key_clean.startswith("sk-"):
+                    return cls._call_openai(system_prompt, user_prompt, key_clean, citations)
+                elif api_provider.lower() == "groq" or key_clean.startswith("gsk_"):
+                    return cls._call_groq(system_prompt, user_prompt, key_clean, citations)
+                else:
+                    return cls._call_gemini(system_prompt, user_prompt, key_clean, citations)
             except Exception as e:
-                # If API call fails (e.g. bad key), fallback to local synthesizer with error note
-                pass
+                # Instead of hiding the error, return the explicit error details!
+                return {
+                    "answer": f"⚠️ **API Call Warning ({api_provider.upper()})**: {str(e)}\n\n"
+                              f"Falling back to local code search results below:\n\n" + 
+                              cls._smart_local_synthesizer(query, context_chunks, repo_info, repo_summary, citations)["answer"],
+                    "citations": citations,
+                    "provider": f"{api_provider.upper()} (Error Fallback)"
+                }
 
         return cls._smart_local_synthesizer(query, context_chunks, repo_info, repo_summary, citations)
 
     @classmethod
     def _call_gemini(cls, system_prompt: str, user_prompt: str, api_key: str, citations: List[Dict[str, Any]]) -> Dict[str, Any]:
-        # Try gemini-1.5-flash, fallback to gemini-2.0-flash if needed
-        models = ["gemini-1.5-flash", "gemini-2.0-flash"]
-        last_error = None
+        models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
+        errors = []
 
         for model in models:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
@@ -103,10 +109,13 @@ class LLMService:
                     data = json.loads(resp.read().decode('utf-8'))
                     answer = data['candidates'][0]['content']['parts'][0]['text']
                     return {"answer": answer, "citations": citations, "provider": f"Google {model}"}
+            except urllib.error.HTTPError as e:
+                err_body = e.read().decode('utf-8', errors='ignore')
+                errors.append(f"HTTP {e.code}: {e.reason} ({err_body[:100]})")
             except Exception as e:
-                last_error = e
+                errors.append(str(e))
 
-        raise last_error or Exception("Gemini API call failed.")
+        raise Exception("; ".join(errors) or "All Gemini model endpoints failed. Please check API Key.")
 
     @classmethod
     def _call_openai(cls, system_prompt: str, user_prompt: str, api_key: str, citations: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -127,10 +136,14 @@ class LLMService:
                 "Authorization": f"Bearer {api_key}"
             }
         )
-        with urllib.request.urlopen(req) as resp:
-            data = json.loads(resp.read().decode('utf-8'))
-            answer = data['choices'][0]['message']['content']
-            return {"answer": answer, "citations": citations, "provider": "OpenAI gpt-4o-mini"}
+        try:
+            with urllib.request.urlopen(req) as resp:
+                data = json.loads(resp.read().decode('utf-8'))
+                answer = data['choices'][0]['message']['content']
+                return {"answer": answer, "citations": citations, "provider": "OpenAI gpt-4o-mini"}
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode('utf-8', errors='ignore')
+            raise Exception(f"OpenAI HTTP {e.code}: {err_body[:150]}")
 
     @classmethod
     def _call_groq(cls, system_prompt: str, user_prompt: str, api_key: str, citations: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -151,10 +164,14 @@ class LLMService:
                 "Authorization": f"Bearer {api_key}"
             }
         )
-        with urllib.request.urlopen(req) as resp:
-            data = json.loads(resp.read().decode('utf-8'))
-            answer = data['choices'][0]['message']['content']
-            return {"answer": answer, "citations": citations, "provider": "Groq (Llama 3.3)"}
+        try:
+            with urllib.request.urlopen(req) as resp:
+                data = json.loads(resp.read().decode('utf-8'))
+                answer = data['choices'][0]['message']['content']
+                return {"answer": answer, "citations": citations, "provider": "Groq (Llama 3.3)"}
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode('utf-8', errors='ignore')
+            raise Exception(f"Groq HTTP {e.code}: {err_body[:150]}")
 
     @classmethod
     def _smart_local_synthesizer(
@@ -177,8 +194,8 @@ class LLMService:
             }
 
         answer_parts = [
-            f"### 🔍 Retrieved Code Context for: *\"{query}\"*\n",
-            f"Here are the exact code implementations retrieved from **{owner}/{repo}** for your query:\n"
+            f"### 🔍 Codebase Search Results for: *\"{query}\"*\n",
+            f"Retrieved relevant implementation chunks from **{owner}/{repo}**:\n"
         ]
 
         for idx, chunk in enumerate(context_chunks[:4], 1):
@@ -188,8 +205,7 @@ class LLMService:
             )
 
         answer_parts.append(
-            "\n> 💡 **Connect a Free API Key for Conversational Reasoning!**\n"
-            "> To get AI explanation & multi-turn answers for any complex question, paste a free **Gemini API Key** or **Groq Key** in top-right `[⚙️ Settings]`!"
+            "\n> 💡 **Tip**: Enter a valid **Gemini API Key** in top-right `[⚙️ Settings]` to enable ChatGPT-style conversational reasoning!"
         )
 
         return {
