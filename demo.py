@@ -13,7 +13,7 @@ from app.services.summary_service import SummaryService
 
 def run_demo(target_repo="pallets/flask", sample_query="Where is the Flask app class defined and initialized?"):
     print("=" * 70)
-    print(f"REPOMIND AI - LIVE DEMO FOR REPOSITORY: '{target_repo}'")
+    print(f"REPOVERSE - LIVE DEMO FOR REPOSITORY: '{target_repo}'")
     print("=" * 70)
 
     # 1. Download & Extract Repo
@@ -52,7 +52,7 @@ def run_demo(target_repo="pallets/flask", sample_query="Where is the Flask app c
     )
 
     print("=" * 70)
-    print("REPOMIND AI RESPONSE:")
+    print("REPOVERSE RESPONSE:")
     print("=" * 70)
     print(result['answer'])
     print("\nRETRIEVED SOURCE CITATIONS:")

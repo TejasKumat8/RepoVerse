@@ -49,7 +49,7 @@ class LLMService:
             )
 
         system_prompt = (
-            "You are RepoMind AI, an expert AI Pair Programmer and codebase analyst. "
+            "You are RepoVerse, an expert AI Pair Programmer and codebase analyst. "
             "Your job is to answer developer questions about a GitHub repository using the provided source code chunks and repository metadata.\n\n"
             "Guidelines:\n"
             "1. Give clear, well-structured markdown answers with code snippets.\n"
@@ -81,7 +81,7 @@ class LLMService:
 
                 return {
                     "answer": f"{warning_head}\n\n"
-                              f"Falling back to RepoMind Codebase Engine results below:\n\n" + 
+                              f"Falling back to RepoVerse Codebase Engine results below:\n\n" + 
                               cls._smart_local_synthesizer(query, context_chunks, repo_info, repo_summary, citations)["answer"],
                     "citations": citations,
                     "provider": f"{api_provider.upper()} (Error Fallback)"
@@ -261,5 +261,5 @@ class LLMService:
         return {
             "answer": "\n".join(answer_parts),
             "citations": citations,
-            "provider": "RepoMind Offline RAG Engine"
+            "provider": "RepoVerse Offline RAG Engine"
         }

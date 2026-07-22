@@ -8,7 +8,7 @@ env_path = BASE_DIR / ".env"
 load_dotenv(dotenv_path=env_path)
 
 class Settings:
-    PROJECT_NAME: str = "RepoMind AI — Your AI Pair Programmer for Any GitHub Repository"
+    PROJECT_NAME: str = "RepoVerse — Understand Any GitHub Repository with AI"
     GITHUB_TOKEN: str = os.getenv("GITHUB_TOKEN", "")
     STORAGE_DIR: Path = BASE_DIR / "storage"
     HOST: str = os.getenv("HOST", "127.0.0.1")
