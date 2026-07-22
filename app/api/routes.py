@@ -126,6 +126,7 @@ def chat_with_repo(req: ChatRequest):
         query=req.query,
         context_chunks=top_chunks,
         repo_info=session["info"],
+        repo_summary=session.get("summary"),
         api_provider=req.api_provider or "gemini",
         api_key=req.api_key
     )
