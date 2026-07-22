@@ -82,7 +82,7 @@ class LLMService:
 
     @classmethod
     def _call_gemini(cls, system_prompt: str, user_prompt: str, api_key: str, citations: List[Dict[str, Any]]) -> Dict[str, Any]:
-        models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
+        models = ["gemini-1.5-flash", "gemini-2.0-flash-exp", "gemini-2.0-flash", "gemini-1.5-pro"]
         errors = []
 
         for model in models:
@@ -186,17 +186,32 @@ class LLMService:
         owner = repo_info.get('owner', 'repo')
         repo = repo_info.get('repo', 'project')
         
-        if not context_chunks:
+        if not context_chunks and not repo_summary:
             return {
                 "answer": f"I analyzed `{owner}/{repo}`, but couldn't find code snippets directly matching **\"{query}\"**. Try rephrasing your search or exploring the directory tree.",
                 "citations": [],
                 "provider": "RepoMind Offline RAG Engine"
             }
 
-        answer_parts = [
-            f"### 🔍 Codebase Search Results for: *\"{query}\"*\n",
-            f"Retrieved relevant implementation chunks from **{owner}/{repo}**:\n"
-        ]
+        q_lower = query.lower()
+        is_overview_q = any(k in q_lower for k in ["purpose", "problem", "overview", "summarize", "summary", "about", "what is this", "what does", "how does"])
+
+        answer_parts = []
+        if is_overview_q and repo_summary:
+            stack_str = ", ".join(repo_summary.get("tech_stack", [])) or "Standard Codebase"
+            entries = [f"`{ep['path']}`" for ep in repo_summary.get("entry_points", [])]
+            answer_parts.append(
+                f"### 🎯 Project Overview & Purpose: `{owner}/{repo}`\n\n"
+                f"**Repository:** `{owner}/{repo}`  \n"
+                f"**Tech Stack:** {stack_str}  \n"
+                f"**Scale:** {repo_summary.get('total_files', 0)} files ({repo_summary.get('total_lines', 0)} total lines)  \n"
+                f"**Key Entry Points:** {', '.join(entries[:4]) or 'N/A'}\n\n"
+                f"#### 💡 Core Overview\n"
+                f"This repository `{repo}` is built using **{stack_str}**. "
+                f"It is structured into primary entry points ({', '.join(entries[:3]) or 'core files'}) to execute the application workflow.\n"
+            )
+
+        answer_parts.append(f"### 🔍 Retrieved Codebase Context for: *\"{query}\"*\n")
 
         for idx, chunk in enumerate(context_chunks[:4], 1):
             answer_parts.append(
@@ -205,7 +220,7 @@ class LLMService:
             )
 
         answer_parts.append(
-            "\n> 💡 **Tip**: Enter a valid **Gemini API Key** in top-right `[⚙️ Settings]` to enable ChatGPT-style conversational reasoning!"
+            "\n> 💡 **Tip**: Enter a valid **Gemini API Key** in top-right `[⚙️ Settings]` for deep ChatGPT-style conversational responses!"
         )
 
         return {
