@@ -1,3 +1,4 @@
+import sys
 import uvicorn
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -31,10 +32,10 @@ static_dir.mkdir(parents=True, exist_ok=True)
 
 app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
 
-import sys
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding='utf-8')
 
 if __name__ == "__main__":
     print(f"Starting RepoMind AI Server at http://{settings.HOST}:{settings.PORT}")
-    uvicorn.run("main:app", host=settings.HOST, port=settings.PORT, reload=True)
+    # Disable full-folder auto-reload so downloading repos to storage/ does not restart server
+    uvicorn.run("main:app", host=settings.HOST, port=settings.PORT, reload=False)

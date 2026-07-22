@@ -17,7 +17,6 @@ class LLMService:
         """
         Generates grounded natural language answers using RAG context chunks.
         """
-        # Format context for prompt
         context_text = ""
         citations = []
         
@@ -45,10 +44,8 @@ class LLMService:
 
         user_prompt = f"Repository: {repo_info.get('owner')}/{repo_info.get('repo')}\nQuestion: {query}\n\nRetrieved Code Context:\n{context_text}"
 
-        # Resolve API Key
         effective_key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("GROQ_API_KEY")
 
-        # Try API provider if key is available
         if effective_key:
             try:
                 if api_provider.lower() == "gemini" or "AIza" in effective_key:
@@ -58,10 +55,8 @@ class LLMService:
                 elif api_provider.lower() == "groq" or effective_key.startswith("gsk_"):
                     return cls._call_groq(system_prompt, user_prompt, effective_key, citations)
             except Exception as e:
-                # Fallback to smart local synthesizer if API call fails
                 pass
 
-        # Fallback: Smart Local RAG Synthesizer (Offline zero-API key mode)
         return cls._smart_local_synthesizer(query, context_chunks, repo_info, citations)
 
     @classmethod
@@ -146,21 +141,18 @@ class LLMService:
                 "provider": "RepoMind Offline RAG Engine"
             }
 
-        top = context_chunks[0]
         answer_parts = [
-            f"### 🔍 Codebase Search Results for: *\"{query}\"*\n",
-            f"Based on semantic analysis of **{repo_info.get('owner')}/{repo_info.get('repo')}**, here are the most relevant code sections:\n",
-            f"#### 1. Implementation in `{top['file_path']}` (Lines {top['start_line']}-{top['end_line']})\n",
-            f"This file (`{top['file_path']}`) contains key code handling your query:",
-            f"```{top['language'].lower()}\n{top['content']}\n```\n"
+            f"### 🤖 Analysis of: *\"{query}\"*\n",
+            f"Based on semantic retrieval from **{repo_info.get('owner')}/{repo_info.get('repo')}**, here is where and how this feature is implemented:\n"
         ]
 
-        if len(context_chunks) > 1:
-            answer_parts.append("#### 📂 Related Files & References:\n")
-            for chunk in context_chunks[1:4]:
-                answer_parts.append(f"- **`{chunk['file_path']}`** (Lines {chunk['start_line']}-{chunk['end_line']}): {chunk['language']} code block")
+        for idx, chunk in enumerate(context_chunks[:4], 1):
+            answer_parts.append(
+                f"#### {idx}. `{chunk['file_path']}` (Lines {chunk['start_line']}-{chunk['end_line']})\n"
+                f"```{chunk['language'].lower()}\n{chunk['content']}\n```\n"
+            )
 
-        answer_parts.append("\n> 💡 *Tip: Connect a Gemini, OpenAI, or Groq API Key in settings for full multi-turn conversational responses!*")
+        answer_parts.append("\n> 💡 *Note: To unlock interactive multi-turn AI reasoning, add your Gemini/OpenAI API key in the top-right Settings modal!*")
 
         return {
             "answer": "\n".join(answer_parts),
