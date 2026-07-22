@@ -33,13 +33,6 @@ class LLMService:
             })
             context_text += f"\n--- SOURCE FILE [{idx}]: {file_ref} ---\n```{chunk['language'].lower()}\n{chunk['content']}\n```\n"
 
-        # Check if question is a high-level overview / purpose question
-        query_lower = query.lower()
-        is_overview_query = any(k in query_lower for k in [
-            "purpose", "problem", "solve", "solving", "what is", "about", "overview", 
-            "summary", "summarize", "architecture", "explain repo", "explain codebase"
-        ])
-
         summary_text = ""
         if repo_summary:
             stack_str = ", ".join(repo_summary.get("tech_stack", [])) or "Standard Codebase"
@@ -75,34 +68,45 @@ class LLMService:
                 elif api_provider.lower() == "groq" or effective_key.startswith("gsk_"):
                     return cls._call_groq(system_prompt, user_prompt, effective_key, citations)
             except Exception as e:
+                # If API call fails (e.g. bad key), fallback to local synthesizer with error note
                 pass
 
-        return cls._smart_local_synthesizer(query, context_chunks, repo_info, repo_summary, is_overview_query, citations)
+        return cls._smart_local_synthesizer(query, context_chunks, repo_info, repo_summary, citations)
 
     @classmethod
     def _call_gemini(cls, system_prompt: str, user_prompt: str, api_key: str, citations: List[Dict[str, Any]]) -> Dict[str, Any]:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-        payload = {
-            "contents": [
-                {
-                    "role": "user",
-                    "parts": [{"text": f"{system_prompt}\n\n{user_prompt}"}]
+        # Try gemini-1.5-flash, fallback to gemini-2.0-flash if needed
+        models = ["gemini-1.5-flash", "gemini-2.0-flash"]
+        last_error = None
+
+        for model in models:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+            payload = {
+                "contents": [
+                    {
+                        "role": "user",
+                        "parts": [{"text": f"{system_prompt}\n\n{user_prompt}"}]
+                    }
+                ],
+                "generationConfig": {
+                    "temperature": 0.2,
+                    "maxOutputTokens": 2048
                 }
-            ],
-            "generationConfig": {
-                "temperature": 0.2,
-                "maxOutputTokens": 2048
             }
-        }
-        req = urllib.request.Request(
-            url, 
-            data=json.dumps(payload).encode('utf-8'),
-            headers={"Content-Type": "application/json"}
-        )
-        with urllib.request.urlopen(req) as resp:
-            data = json.loads(resp.read().decode('utf-8'))
-            answer = data['candidates'][0]['content']['parts'][0]['text']
-            return {"answer": answer, "citations": citations, "provider": "Gemini 1.5 Flash"}
+            req = urllib.request.Request(
+                url, 
+                data=json.dumps(payload).encode('utf-8'),
+                headers={"Content-Type": "application/json"}
+            )
+            try:
+                with urllib.request.urlopen(req) as resp:
+                    data = json.loads(resp.read().decode('utf-8'))
+                    answer = data['candidates'][0]['content']['parts'][0]['text']
+                    return {"answer": answer, "citations": citations, "provider": f"Google {model}"}
+            except Exception as e:
+                last_error = e
+
+        raise last_error or Exception("Gemini API call failed.")
 
     @classmethod
     def _call_openai(cls, system_prompt: str, user_prompt: str, api_key: str, citations: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -159,38 +163,12 @@ class LLMService:
         context_chunks: List[Dict[str, Any]], 
         repo_info: Dict[str, Any], 
         repo_summary: Optional[Dict[str, Any]],
-        is_overview_query: bool,
         citations: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
         
         owner = repo_info.get('owner', 'repo')
         repo = repo_info.get('repo', 'project')
-        stack_str = ", ".join(repo_summary.get('tech_stack', [])) if repo_summary else "Software Project"
-        files_count = repo_summary.get('total_files', len(context_chunks)) if repo_summary else len(context_chunks)
-        entries = [ep['path'] for ep in repo_summary.get('entry_points', [])] if repo_summary else []
-
-        if is_overview_query:
-            answer_parts = [
-                f"### 🚀 Project Overview & Purpose of `{owner}/{repo}`\n",
-                f"**`{owner}/{repo}`** is a **{stack_str}** project containing **{files_count} files**.\n",
-                f"#### 🎯 Core Purpose & Problem It Solves:\n",
-                f"1. **Primary Functionality**: Provides a structured codebase built with **{stack_str}** to execute key application workflows.",
-                f"2. **Main Application Entry Points**: " + (", ".join([f"`{e}`" for e in entries]) if entries else "Standard project modules."),
-                f"3. **Developer Efficiency**: Simplifies feature implementation and architecture organization for maintainability.\n",
-                f"#### 📂 Key Implementation Files:\n"
-            ]
-
-            for chunk in context_chunks[:4]:
-                answer_parts.append(f"- **`{chunk['file_path']}`** (Lines {chunk['start_line']}-{chunk['end_line']}): Implements core `{chunk['language']}` logic.")
-
-            answer_parts.append("\n> 💡 *Tip: Enter a Gemini, OpenAI, or Groq API Key in the top-right Settings modal for full multi-turn AI reasoning!*")
-
-            return {
-                "answer": "\n".join(answer_parts),
-                "citations": citations,
-                "provider": "RepoMind Offline Intelligence Engine"
-            }
-
+        
         if not context_chunks:
             return {
                 "answer": f"I analyzed `{owner}/{repo}`, but couldn't find code snippets directly matching **\"{query}\"**. Try rephrasing your search or exploring the directory tree.",
@@ -199,8 +177,8 @@ class LLMService:
             }
 
         answer_parts = [
-            f"### 🤖 Analysis of: *\"{query}\"*\n",
-            f"Based on semantic retrieval from **{owner}/{repo}**, here are the relevant code implementations:\n"
+            f"### 🔍 Retrieved Code Context for: *\"{query}\"*\n",
+            f"Here are the exact code implementations retrieved from **{owner}/{repo}** for your query:\n"
         ]
 
         for idx, chunk in enumerate(context_chunks[:4], 1):
@@ -209,7 +187,10 @@ class LLMService:
                 f"```{chunk['language'].lower()}\n{chunk['content']}\n```\n"
             )
 
-        answer_parts.append("\n> 💡 *Tip: Connect a Gemini, OpenAI, or Groq API Key in settings for full multi-turn conversational responses!*")
+        answer_parts.append(
+            "\n> 💡 **Connect a Free API Key for Conversational Reasoning!**\n"
+            "> To get AI explanation & multi-turn answers for any complex question, paste a free **Gemini API Key** or **Groq Key** in top-right `[⚙️ Settings]`!"
+        )
 
         return {
             "answer": "\n".join(answer_parts),
