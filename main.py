@@ -31,6 +31,10 @@ static_dir.mkdir(parents=True, exist_ok=True)
 
 app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
 
+import sys
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding='utf-8')
+
 if __name__ == "__main__":
-    print(f"🚀 Starting RepoMind AI Server at http://{settings.HOST}:{settings.PORT}")
+    print(f"Starting RepoMind AI Server at http://{settings.HOST}:{settings.PORT}")
     uvicorn.run("main:app", host=settings.HOST, port=settings.PORT, reload=True)
