@@ -27,21 +27,14 @@
 
 ## 📸 Screenshots
 
-> [!TIP]
-> **Screenshot Gallery Placeholders**
-> Drop your UI screenshots into `docs/images/` to render them in the gallery below:
-
-| Feature | Image Path | Status |
-| :--- | :--- | :--- |
-| **Repository Dashboard** | `docs/images/dashboard.png` | ⏳ *Pending Screenshot* |
-| **Interactive Code Chat** | `docs/images/chat.png` | ⏳ *Pending Screenshot* |
-| **GitHub Repo Importer** | `docs/images/import.png` | ⏳ *Pending Screenshot* |
-
-<!--
+### 📊 Repository Dashboard & Codebase Intelligence
 ![RepoVerse Dashboard](docs/images/dashboard.png)
+
+### 💬 Interactive AI Codebase Chat with RAG Line Citations
 ![RepoVerse Chat Interface](docs/images/chat.png)
+
+### 📥 One-Click GitHub Repository Importer
 ![RepoVerse GitHub Importer](docs/images/import.png)
--->
 
 ---
 
