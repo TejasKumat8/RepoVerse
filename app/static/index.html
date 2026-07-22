@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RepoMind AI — Your AI Pair Programmer for Any GitHub Repository</title>
+  
+  <!-- Google Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  
+  <!-- Markdown & Code Highlighting Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="dark-theme">
+  <div id="app" class="app-container">
+    
+    <!-- Top Navbar -->
+    <header class="navbar">
+      <div class="nav-brand">
+        <div class="logo-icon"><i class="fa-solid fa-brain"></i></div>
+        <div class="brand-text">
+          <span class="brand-title">RepoMind <span class="accent-text">AI</span></span>
+          <span class="brand-tagline">AI Pair Programmer for GitHub</span>
+        </div>
+      </div>
+
+      <!-- Quick Import Input -->
+      <div class="nav-repo-bar">
+        <div class="input-wrapper">
+          <i class="fa-brands fa-github search-icon"></i>
+          <input type="text" id="repoUrlInput" placeholder="Paste GitHub Repository URL (e.g. owner/repo or https://github.com/fastapi/fastapi)..." />
+          <button id="importBtn" class="btn btn-primary">
+            <i class="fa-solid fa-bolt"></i> Index Repo
+          </button>
+        </div>
+      </div>
+
+      <div class="nav-actions">
+        <button id="activeRepoBadge" class="repo-badge hidden" title="Currently Active Repository">
+          <i class="fa-solid fa-code-branch"></i> <span id="activeRepoName">No Repo Selected</span>
+        </button>
+        <button id="settingsBtn" class="btn btn-icon" title="API Keys & Token Settings">
+          <i class="fa-solid fa-sliders"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace Area -->
+    <main class="main-workspace">
+      
+      <!-- Left Sidebar (Tabs Navigation) -->
+      <aside class="sidebar">
+        <nav class="sidebar-nav">
+          <button class="nav-tab active" data-tab="chatTab">
+            <i class="fa-solid fa-comments"></i> <span>AI Chat</span>
+          </button>
+          <button class="nav-tab" data-tab="overviewTab">
+            <i class="fa-solid fa-chart-pie"></i> <span>Repo Intelligence</span>
+          </button>
+          <button class="nav-tab" data-tab="searchTab">
+            <i class="fa-solid fa-magnifying-glass-code"></i> <span>Code Search</span>
+          </button>
+          <button class="nav-tab" data-tab="diagramTab">
+            <i class="fa-solid fa-diagram-project"></i> <span>Architecture Diagram</span>
+          </button>
+          <button class="nav-tab" data-tab="historyTab">
+            <i class="fa-solid fa-clock-rotate-left"></i> <span>History</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="token-status">
+            <span class="status-dot green"></span>
+            <span class="status-label">GitHub Token Active</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Content Views Panel -->
+      <section class="content-panel">
+        
+        <!-- Welcome Hero View (Shown when no repo is imported yet) -->
+        <div id="welcomeView" class="welcome-container">
+          <div class="hero-card">
+            <div class="hero-glow"></div>
+            <div class="hero-badge">🚀 Powered by RAG & Vector Embeddings</div>
+            <h1>Understand Any Codebase in <span class="gradient-text">Minutes</span>, Not Days</h1>
+            <p>Paste any public GitHub repository URL to index its source code, explore architecture, and ask natural language questions grounded directly in the code.</p>
+            
+            <div class="hero-input-box">
+              <input type="text" id="heroRepoUrlInput" placeholder="https://github.com/pallets/flask" />
+              <button id="heroImportBtn" class="btn btn-primary btn-lg">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Analyze Repository
+              </button>
+            </div>
+
+            <div class="sample-repos">
+              <span>Try Popular Repos:</span>
+              <button class="sample-btn" data-url="https://github.com/fastapi/fastapi">fastapi/fastapi</button>
+              <button class="sample-btn" data-url="https://github.com/pallets/flask">pallets/flask</button>
+              <button class="sample-btn" data-url="https://github.com/expressjs/express">expressjs/express</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Processing Loading Overlay -->
+        <div id="processingView" class="processing-overlay hidden">
+          <div class="loader-box">
+            <div class="spinner-cyber"></div>
+            <h3 id="processTitle">Downloading & Parsing Codebase...</h3>
+            <p id="processSubtitle">Extracting files, generating code chunks, and indexing into vector database...</p>
+            <div class="progress-bar-container">
+              <div id="progressBar" class="progress-bar-fill"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 1: AI Chat Interface -->
+        <div id="chatTab" class="tab-content hidden">
+          <div class="chat-container">
+            <div class="chat-header">
+              <div class="chat-title">
+                <i class="fa-solid fa-robot"></i> <span id="chatRepoTitle">RepoMind AI Pair Programmer</span>
+              </div>
+              <div class="chat-provider-selector">
+                <label><i class="fa-solid fa-microchip"></i> Provider:</label>
+                <select id="llmProviderSelect">
+                  <option value="gemini">Google Gemini 1.5</option>
+                  <option value="openai">OpenAI (gpt-4o-mini)</option>
+                  <option value="groq">Groq (Llama 3.3)</option>
+                  <option value="local">Local RAG Engine</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Chat Messages Log -->
+            <div id="chatMessages" class="chat-messages">
+              <div class="chat-message system-message">
+                <div class="avatar"><i class="fa-solid fa-brain"></i></div>
+                <div class="message-body">
+                  <p>👋 Welcome! Ask me anything about this codebase. Here are some quick questions to get started:</p>
+                  <div class="prompt-chips">
+                    <button class="chip-btn"><i class="fa-solid fa-key"></i> Where is authentication implemented?</button>
+                    <button class="chip-btn"><i class="fa-solid fa-route"></i> Explain the API routing structure.</button>
+                    <button class="chip-btn"><i class="fa-solid fa-database"></i> Where is the database connection created?</button>
+                    <button class="chip-btn"><i class="fa-solid fa-sitemap"></i> Summarize the folder structure.</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Chat Input Area -->
+            <div class="chat-input-area">
+              <div class="chat-input-box">
+                <textarea id="chatInput" placeholder="Ask a question about authentication, database, routing, or functions..." rows="1"></textarea>
+                <button id="sendChatBtn" class="btn btn-accent" title="Send Question">
+                  <i class="fa-solid fa-paper-plane"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: Repository Intelligence Overview -->
+        <div id="overviewTab" class="tab-content hidden">
+          <div class="overview-grid">
+            
+            <!-- Repo Info & Tech Stack Card -->
+            <div class="card overview-card">
+              <h3><i class="fa-solid fa-layer-group"></i> Tech Stack & Metrics</h3>
+              <div class="stats-row">
+                <div class="stat-pill"><i class="fa-solid fa-file-code"></i> <span id="statFiles">0</span> Files</div>
+                <div class="stat-pill"><i class="fa-solid fa-bars-staggered"></i> <span id="statLines">0</span> Lines</div>
+                <div class="stat-pill"><i class="fa-solid fa-code-branch"></i> Branch: <span id="statBranch">main</span></div>
+              </div>
+              <div class="tech-stack-container" id="techStackBadges">
+                <!-- Stack Badges Inserted Here -->
+              </div>
+            </div>
+
+            <!-- Entry Points Card -->
+            <div class="card overview-card">
+              <h3><i class="fa-solid fa-door-open"></i> Important Entry Points</h3>
+              <div id="entryPointsList" class="entry-list">
+                <!-- Entry Points Inserted Here -->
+              </div>
+            </div>
+
+            <!-- Folder Structure Tree Explorer Card -->
+            <div class="card overview-card full-width">
+              <h3><i class="fa-solid fa-folder-tree"></i> Interactive Codebase Tree Explorer</h3>
+              <div id="folderTreeContainer" class="tree-explorer">
+                <!-- Tree rendered here -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: Semantic Code Search -->
+        <div id="searchTab" class="tab-content hidden">
+          <div class="search-tab-container">
+            <div class="search-bar-card">
+              <input type="text" id="semanticQueryInput" placeholder="Search function definitions, classes, routes, or imports..." />
+              <button id="execSearchBtn" class="btn btn-primary"><i class="fa-solid fa-search"></i> Vector Search</button>
+            </div>
+            <div id="searchResultsList" class="search-results-list">
+              <!-- Search Results inserted here -->
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: Architecture Diagram -->
+        <div id="diagramTab" class="tab-content hidden">
+          <div class="diagram-container">
+            <div class="diagram-header">
+              <h3><i class="fa-solid fa-diagram-project"></i> Auto-Generated Architecture Diagram</h3>
+              <button id="refreshDiagramBtn" class="btn btn-secondary"><i class="fa-solid fa-arrows-rotate"></i> Regenerate</button>
+            </div>
+            <div id="mermaidViewer" class="mermaid-box">
+              <div class="mermaid" id="mermaidGraph">
+                graph TD
+                A[Import Repo] --> B[Generate Index]
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 5: History -->
+        <div id="historyTab" class="tab-content hidden">
+          <div class="history-container">
+            <h3><i class="fa-solid fa-clock-rotate-left"></i> Session History & Questions</h3>
+            <div id="historyList" class="history-list">
+              <!-- History items -->
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- Code Preview Modal -->
+    <div id="codeModal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-title">
+            <i class="fa-solid fa-file-code"></i> <span id="modalFileName">file.py</span>
+          </div>
+          <button id="closeModalBtn" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body">
+          <pre><code id="modalCodeSnippet" class="language-python"># Code content...</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal-overlay hidden">
+      <div class="modal-card modal-sm">
+        <div class="modal-header">
+          <div class="modal-title"><i class="fa-solid fa-sliders"></i> API Keys & Tokens</div>
+          <button id="closeSettingsBtn" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body settings-body">
+          <label>GitHub Fine-Grained Personal Access Token:</label>
+          <input type="password" id="settingsGhToken" placeholder="github_pat_..." />
+          <span class="hint-text">Used for authenticated rate-limits when importing repos.</span>
+
+          <label>Google Gemini API Key (Optional):</label>
+          <input type="password" id="settingsGeminiKey" placeholder="AIzaSy..." />
+
+          <label>OpenAI API Key (Optional):</label>
+          <input type="password" id="settingsOpenAIKey" placeholder="sk-..." />
+
+          <label>Groq API Key (Optional):</label>
+          <input type="password" id="settingsGroqKey" placeholder="gsk_..." />
+
+          <button id="saveSettingsBtn" class="btn btn-accent full-width"><i class="fa-solid fa-floppy-disk"></i> Save Settings</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
