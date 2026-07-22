@@ -17,22 +17,31 @@
 
 ## 🎬 Product Demo
 
-![RepoVerse Demo](docs/demo.gif)
-
-*Watch RepoVerse import a GitHub repository, perform semantic code search, extract architecture diagrams, and answer questions in real time.*
+> [!NOTE]
+> 🚧 **Demo Recording Placeholder**
+> Place your demo GIF at `docs/demo.gif` to automatically display the product walkthrough here.
+> 
+> <!-- ![RepoVerse Demo](docs/demo.gif) -->
 
 ---
 
 ## 📸 Screenshots
 
-### 📊 Repository Dashboard
+> [!TIP]
+> **Screenshot Gallery Placeholders**
+> Drop your UI screenshots into `docs/images/` to render them in the gallery below:
+
+| Feature | Image Path | Status |
+| :--- | :--- | :--- |
+| **Repository Dashboard** | `docs/images/dashboard.png` | ⏳ *Pending Screenshot* |
+| **Interactive Code Chat** | `docs/images/chat.png` | ⏳ *Pending Screenshot* |
+| **GitHub Repo Importer** | `docs/images/import.png` | ⏳ *Pending Screenshot* |
+
+<!--
 ![RepoVerse Dashboard](docs/images/dashboard.png)
-
-### 💬 Interactive Code Base Chat
 ![RepoVerse Chat Interface](docs/images/chat.png)
-
-### 📥 Instant GitHub Repository Importer
 ![RepoVerse GitHub Importer](docs/images/import.png)
+-->
 
 ---
 
