@@ -1,4 +1,5 @@
 import json
+import re
 import numpy as np
 from pathlib import Path
 from typing import List, Dict, Any
@@ -15,7 +16,7 @@ class VectorStore:
         
         self.chunks: List[Dict[str, Any]] = []
         self.vectorizer = TfidfVectorizer(
-            ngram_range=(1, 2),
+            ngram_range=(1, 3),
             token_pattern=r'(?u)\b\w+\b|[^\w\s]',
             sublinear_tf=True
         )
@@ -31,8 +32,6 @@ class VectorStore:
         corpus = [f"{c['file_path']} {c['language']}\n{c['content']}" for c in chunks]
         self.tfidf_matrix = self.vectorizer.fit_transform(corpus)
         self.is_indexed = True
-
-        # Save to disk
         self.save_index()
 
     def save_index(self):
@@ -66,21 +65,31 @@ class VectorStore:
         query_vec = self.vectorizer.transform([query])
         scores = cosine_similarity(query_vec, self.tfidf_matrix).flatten()
 
-        top_indices = np.argsort(scores)[::-1][:top_k]
+        # Keyword boost heuristic (exact word match in file path or content)
+        query_words = [w.lower() for w in re.findall(r'\w+', query) if len(w) > 2]
+        
+        boosted_scores = np.copy(scores)
+        for i, chunk in enumerate(self.chunks):
+            content_lower = chunk['content'].lower()
+            path_lower = chunk['file_path'].lower()
+            
+            matches = 0
+            for w in query_words:
+                if w in path_lower:
+                    matches += 3
+                if w in content_lower:
+                    matches += 1
+            
+            if matches > 0:
+                boosted_scores[i] += (matches * 0.05)
+
+        top_indices = np.argsort(boosted_scores)[::-1][:top_k]
         
         results = []
         for idx in top_indices:
-            score = float(scores[idx])
-            if score > 0.01:  # Filter completely non-matching chunks
-                chunk = self.chunks[idx].copy()
-                chunk["score"] = round(score, 4)
-                results.append(chunk)
-
-        # Fallback if no scores > 0.01: return top 3 chunks anyway
-        if not results and len(self.chunks) > 0:
-            for idx in top_indices[:3]:
-                chunk = self.chunks[idx].copy()
-                chunk["score"] = float(scores[idx])
-                results.append(chunk)
+            score = float(boosted_scores[idx])
+            chunk = self.chunks[idx].copy()
+            chunk["score"] = round(score, 4)
+            results.append(chunk)
 
         return results
