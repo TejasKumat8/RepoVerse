@@ -25,7 +25,8 @@
 
 ---
 
-## 📸 Screenshots
+## 📸 Screenshots{Futuristic Plan}
+
 
 ### 📊 Repository Dashboard & Codebase Intelligence
 ![RepoVerse Dashboard](docs/images/dashboard.png)
