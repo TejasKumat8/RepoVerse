@@ -166,31 +166,72 @@ class LLMService:
             err_body = e.read().decode('utf-8', errors='ignore')
             raise Exception(f"OpenAI HTTP {e.code}: {err_body[:150]}")
 
+    # Groq retires models regularly, so we discover a live one instead of hard-coding it.
+    _GROQ_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    _GROQ_PREFERRED = ("llama-4", "llama-3.3", "gpt-oss-120b", "qwen", "kimi", "gpt-oss", "llama")
+    _GROQ_EXCLUDED = ("whisper", "guard", "tts", "orpheus", "playai", "distil", "compound")
+    _groq_model_cache: Optional[str] = None
+
+    @classmethod
+    def _discover_groq_model(cls, api_key: str) -> str:
+        req = urllib.request.Request(
+            "https://api.groq.com/openai/v1/models",
+            headers={"Authorization": f"Bearer {api_key}", "User-Agent": cls._GROQ_UA},
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            models = json.loads(resp.read().decode("utf-8")).get("data", [])
+        ids = [
+            m["id"] for m in models
+            if m.get("active", True) and not any(x in m["id"].lower() for x in cls._GROQ_EXCLUDED)
+        ]
+        if not ids:
+            raise Exception("Groq: no chat models available for this API key")
+        for pref in cls._GROQ_PREFERRED:
+            for mid in ids:
+                if pref in mid.lower():
+                    return mid
+        return ids[0]
+
     @classmethod
     def _call_groq(cls, system_prompt: str, user_prompt: str, api_key: str, citations: List[Dict[str, Any]]) -> Dict[str, Any]:
         url = "https://api.groq.com/openai/v1/chat/completions"
-        payload = {
-            "model": "llama-3.3-70b-versatile",
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            "temperature": 0.2
-        }
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode('utf-8'),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        configured = os.getenv("GROQ_MODEL", "").strip()
+        model = configured or cls._groq_model_cache or cls._discover_groq_model(api_key)
+
+        def _request(model_id: str) -> Dict[str, Any]:
+            payload = {
+                "model": model_id,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                "temperature": 0.2
             }
-        )
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode('utf-8'),
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {api_key}",
+                    "User-Agent": cls._GROQ_UA
+                }
+            )
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                return json.loads(resp.read().decode('utf-8'))
+
         try:
-            with urllib.request.urlopen(req) as resp:
-                data = json.loads(resp.read().decode('utf-8'))
-                answer = data['choices'][0]['message']['content']
-                return {"answer": answer, "citations": citations, "provider": "Groq (Llama 3.3)"}
+            try:
+                data = _request(model)
+            except urllib.error.HTTPError as e:
+                # Model retired or unavailable: rediscover once and retry
+                if e.code in (400, 404) and not configured:
+                    model = cls._discover_groq_model(api_key)
+                    data = _request(model)
+                else:
+                    raise
+            cls._groq_model_cache = model
+            answer = data['choices'][0]['message']['content']
+            return {"answer": answer, "citations": citations, "provider": f"Groq ({model})"}
         except urllib.error.HTTPError as e:
             err_body = e.read().decode('utf-8', errors='ignore')
             raise Exception(f"Groq HTTP {e.code}: {err_body[:150]}")
