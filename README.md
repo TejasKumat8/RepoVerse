@@ -13,6 +13,10 @@
 
 ## 🌐 Live Demo
 
+**🔗 Try it live:** https://repoverse-hto5.onrender.com
+
+Deploy your own copy:
+
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/TejasKumat8/RepoVerse)
 
 > Runs on Render's free tier with no API keys required (offline RAG mode). Add `GEMINI_API_KEY`, `GROQ_API_KEY` or `OPENAI_API_KEY` in the Render dashboard for LLM-powered answers. The free instance sleeps when idle, so the first load can take ~30–50s.
