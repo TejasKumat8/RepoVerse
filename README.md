@@ -11,6 +11,12 @@
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
+## 🌐 Live Demo
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/TejasKumat8/RepoVerse)
+
+> Runs on Render's free tier with no API keys required (offline RAG mode). Add `GEMINI_API_KEY`, `GROQ_API_KEY` or `OPENAI_API_KEY` in the Render dashboard for LLM-powered answers. The free instance sleeps when idle, so the first load can take ~30–50s.
+
 **RepoVerse** is an enterprise-grade, full-stack **Code Intelligence** platform designed to help developers, AI engineers, and software architects instantly explore, query, and comprehend any public GitHub repository. Powered by high-density **Retrieval-Augmented Generation (RAG)**, custom n-gram vector embeddings, line-aware code parsing, and multi-LLM reasoning, RepoVerse transforms complex codebases into an interactive conversational interface grounded in precise source lines and live repository metadata.
 
 ---

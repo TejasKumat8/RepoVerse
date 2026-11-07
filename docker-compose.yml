@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  repomind-ai:
+  repoverse:
     build: .
-    container_name: repomind-ai
+    container_name: repoverse
     ports:
       - "8000:8000"
     environment:

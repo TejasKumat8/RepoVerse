@@ -1,0 +1,22 @@
+# Render Blueprint: one-click deploy via the "Deploy to Render" button in README.md
+services:
+  - type: web
+    name: repoverse
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      # Optional: raises GitHub API rate limits when importing repos
+      - key: GITHUB_TOKEN
+        sync: false
+      # Optional LLM keys. Without any, RepoVerse uses its offline local RAG synthesizer.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
